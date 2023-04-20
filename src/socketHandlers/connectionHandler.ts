@@ -1,15 +1,25 @@
 import { Socket } from 'socket.io';
+import { createProject, getProjectsByUserId } from '../controllers/projects';
 
-export const onSocketConnection: (socket: Socket) => void = (socket) => {
-  const userId = socket.data.userId;
+export const onSocketConnection: (socket: Socket) => void = async (socket) => {
+  const userId: string = socket.data.userId;
 
-  socket.join(userId);
+  await socket.join(userId);
+
+  console.log(`USER ID:  ${userId}`);
 
   socket.on('disconnect', () => {
     console.log('User was disconnected');
   });
 
-  socket.on('receive-projects', () => {
-    socket.to(userId).emit('received-projects', 'test');
+  socket.on('create-project', async (name: string) => {
+    await createProject(name, userId);
+    const projects = await getProjectsByUserId(userId);
+    socket.emit('received-projects', projects);
+  });
+
+  socket.on('receive-projects', async () => {
+    const projects = await getProjectsByUserId(userId);
+    socket.emit('received-projects', projects);
   });
 };
