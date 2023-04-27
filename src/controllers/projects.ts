@@ -38,3 +38,29 @@ export const getProjectsByUserId = async (userId: string): Promise<ProjectEntity
     }),
   );
 };
+
+export const getProjectById = async (projectId: string): Promise<ProjectEntity | null> => {
+  const project = await Project.findById(projectId).exec();
+
+  if (project === null) {
+    return null;
+  }
+
+  const members = await Promise.all(
+    project.members.map(async (member) => {
+      const userEntity = await getUserById(member._id.toString());
+      return userEntity;
+    }),
+  );
+
+  const filteredMembers = members.filter((member) => member !== null) as UserEntity[];
+
+  const projectEntity: ProjectEntity = {
+    id: project._id.toString(),
+    name: project.name,
+    lastSaved: project.lastSaved,
+    members: filteredMembers,
+  };
+
+  return projectEntity;
+};
