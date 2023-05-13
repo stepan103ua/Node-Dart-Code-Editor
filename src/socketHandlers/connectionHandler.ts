@@ -1,6 +1,12 @@
 import { Socket } from 'socket.io';
 import { createProject, getProjectsByUserId } from '../controllers/projects';
 import { acceptInvite, getInvitesByUserId, rejectInvite, sendInvite } from '../controllers/invites';
+import {
+  addUserToTempProject,
+  disconnectFromAllTempProjects,
+  getTempProjectById,
+} from '../temp/projects';
+import { getUserById } from '../controllers/users';
 
 export const onSocketConnection: (socket: Socket) => void = async (socket) => {
   const userId: string = socket.data.userId;
@@ -10,7 +16,8 @@ export const onSocketConnection: (socket: Socket) => void = async (socket) => {
   console.log(`USER ID:  ${userId}`);
 
   socket.on('disconnect', () => {
-    console.log('User was disconnected');
+    disconnectFromAllTempProjects(userId, socket);
+    socket.disconnect(true);
   });
 
   socket.on('create-project', async (name: string) => {
@@ -48,5 +55,27 @@ export const onSocketConnection: (socket: Socket) => void = async (socket) => {
     const projects = await getProjectsByUserId(userId);
     const invites = await getInvitesByUserId(userId);
     socket.emit('invite-accepted', projects, invites);
+  });
+
+  socket.on('open-project', async (projectId: string) => {
+    const user = await getUserById(userId);
+
+    if (user === null) {
+      return;
+    }
+
+    addUserToTempProject(projectId, user);
+
+    const project = getTempProjectById(projectId);
+
+    if (project === undefined) {
+      return;
+    }
+
+    await socket.join(projectId);
+
+    socket.to(projectId).emit('project-online-members-updated', project.usersOnline);
+
+    socket.emit('project-online-members-updated', project.usersOnline);
   });
 };
