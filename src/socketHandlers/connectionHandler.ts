@@ -5,6 +5,8 @@ import {
   addUserToTempProject,
   disconnectFromAllTempProjects,
   getTempProjectById,
+  getTempProjectCode,
+  tempProjectCodeUpdate,
 } from '../temp/projects';
 import { getUserById } from '../controllers/users';
 
@@ -75,7 +77,15 @@ export const onSocketConnection: (socket: Socket) => void = async (socket) => {
     await socket.join(projectId);
 
     socket.to(projectId).emit('project-online-members-updated', project.usersOnline);
+    socket.emit('receive-project-code-updated', getTempProjectCode(projectId) ?? 'Empty');
 
     socket.emit('project-online-members-updated', project.usersOnline);
+  });
+
+  socket.on('project-code-update', (projectId: string, code: string) => {
+    const result = tempProjectCodeUpdate(projectId, code);
+    if (result) {
+      socket.to(projectId).emit('receive-project-code-updated', code);
+    }
   });
 };

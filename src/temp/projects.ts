@@ -4,6 +4,7 @@ import { UserEntity } from '../entities/user';
 interface TempProject {
   projectId: string;
   usersOnline: UserEntity[];
+  code: string;
 }
 
 const tempProjects: TempProject[] = [];
@@ -12,7 +13,7 @@ export const addUserToTempProject = (projectId: string, user: UserEntity): void 
   const projectIndex = tempProjects.findIndex((value) => value.projectId === projectId);
 
   if (projectIndex === -1) {
-    tempProjects.push({ projectId, usersOnline: [user] });
+    tempProjects.push({ projectId, usersOnline: [user], code: '' });
     return;
   }
 
@@ -58,3 +59,18 @@ export const disconnectFromAllTempProjects = (userId: string, socket: Socket): v
       .emit('project-online-members-updated', getTempProjectById(project.projectId)?.usersOnline);
   });
 };
+
+export const tempProjectCodeUpdate = (projectId: string, code: string): boolean => {
+  const project = tempProjects.find((value) => value.projectId === projectId);
+
+  if (project === undefined) {
+    return false;
+  }
+
+  project.code = code;
+
+  return true;
+};
+
+export const getTempProjectCode = (projectId: string): string | undefined =>
+  tempProjects.find((value) => value.projectId === projectId)?.code;
