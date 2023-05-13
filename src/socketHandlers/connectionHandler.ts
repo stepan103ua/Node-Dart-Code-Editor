@@ -1,5 +1,5 @@
 import { Socket } from 'socket.io';
-import { createProject, getProjectsByUserId } from '../controllers/projects';
+import { createProject, getProjectById, getProjectsByUserId } from '../controllers/projects';
 import { acceptInvite, getInvitesByUserId, rejectInvite, sendInvite } from '../controllers/invites';
 import {
   addUserToTempProject,
@@ -9,6 +9,7 @@ import {
   tempProjectCodeUpdate,
 } from '../temp/projects';
 import { getUserById } from '../controllers/users';
+import { saveProjectCode } from '../controllers/projectCode';
 
 export const onSocketConnection: (socket: Socket) => void = async (socket) => {
   const userId: string = socket.data.userId;
@@ -66,20 +67,22 @@ export const onSocketConnection: (socket: Socket) => void = async (socket) => {
       return;
     }
 
-    addUserToTempProject(projectId, user);
+    await addUserToTempProject(projectId, user);
 
-    const project = getTempProjectById(projectId);
+    const tempProject = getTempProjectById(projectId);
 
-    if (project === undefined) {
+    if (tempProject === undefined) {
       return;
     }
 
     await socket.join(projectId);
 
-    socket.to(projectId).emit('project-online-members-updated', project.usersOnline);
-    socket.emit('receive-project-code-updated', getTempProjectCode(projectId) ?? 'Empty');
+    const project = await getProjectById(projectId);
 
-    socket.emit('project-online-members-updated', project.usersOnline);
+    socket.to(projectId).emit('project-online-members-updated', tempProject.usersOnline);
+    socket.emit('receive-project-code-updated', project?.name, getTempProjectCode(projectId) ?? '');
+
+    socket.emit('project-online-members-updated', tempProject.usersOnline);
   });
 
   socket.on('project-code-update', (projectId: string, code: string) => {
@@ -87,5 +90,22 @@ export const onSocketConnection: (socket: Socket) => void = async (socket) => {
     if (result) {
       socket.to(projectId).emit('receive-project-code-updated', code);
     }
+  });
+
+  socket.on('project-code-save', async (projectId: string, code: string) => {
+    const result = await saveProjectCode(projectId, code);
+
+    if (!result) {
+      socket.emit('receive-project-code-saved', 'Failed to save the code!');
+      return;
+    }
+
+    const user = await getUserById(userId);
+    const message =
+      user !== null
+        ? `Code was successfully saved by ${user?.username}!`
+        : 'Code was successfully saved!';
+    socket.to(projectId).emit('receive-project-code-saved', message);
+    socket.emit('receive-project-code-saved', message);
   });
 };

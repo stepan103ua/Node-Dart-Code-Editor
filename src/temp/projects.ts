@@ -1,5 +1,6 @@
 import { Socket } from 'socket.io';
 import { UserEntity } from '../entities/user';
+import { getProjectCodeByProjectId } from '../controllers/projectCode';
 
 interface TempProject {
   projectId: string;
@@ -9,11 +10,12 @@ interface TempProject {
 
 const tempProjects: TempProject[] = [];
 
-export const addUserToTempProject = (projectId: string, user: UserEntity): void => {
+export const addUserToTempProject = async (projectId: string, user: UserEntity): Promise<void> => {
   const projectIndex = tempProjects.findIndex((value) => value.projectId === projectId);
 
   if (projectIndex === -1) {
-    tempProjects.push({ projectId, usersOnline: [user], code: '' });
+    const projectCode = await getProjectCodeByProjectId(projectId);
+    tempProjects.push({ projectId, usersOnline: [user], code: projectCode?.code ?? '' });
     return;
   }
 
