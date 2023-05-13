@@ -1,7 +1,6 @@
 import { InferSchemaType, Schema, model } from 'mongoose';
 
 const projectCodeSchema = new Schema({
-  lastSaved: { type: Date, default: Date.now },
   projectId: {
     type: Schema.Types.ObjectId,
     ref: 'Project',
