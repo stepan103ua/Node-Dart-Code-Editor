@@ -64,3 +64,18 @@ export const getProjectById = async (projectId: string): Promise<ProjectEntity |
 
   return projectEntity;
 };
+
+export const isUserMemberOfProject = async (
+  userId: string,
+  projectId: string,
+): Promise<boolean> => {
+  try {
+    const project = await Project.findById(projectId).exec();
+
+    const user = project?.members.find((value) => value._id.toString() === userId);
+
+    return user !== undefined;
+  } catch (_) {
+    return false;
+  }
+};
