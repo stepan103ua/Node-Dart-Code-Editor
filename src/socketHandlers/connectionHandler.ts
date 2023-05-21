@@ -1,5 +1,10 @@
 import { Socket } from 'socket.io';
-import { createProject, getProjectById, getProjectsByUserId } from '../controllers/projects';
+import {
+  createProject,
+  getProjectById,
+  getProjectsByUserId,
+  isUserMemberOfProject,
+} from '../controllers/projects';
 import { acceptInvite, getInvitesByUserId, rejectInvite, sendInvite } from '../controllers/invites';
 import {
   addUserToTempProject,
@@ -61,6 +66,15 @@ export const onSocketConnection: (socket: Socket) => void = async (socket) => {
   });
 
   socket.on('open-project', async (projectId: string) => {
+    const isUserHasAccess = await isUserMemberOfProject(userId, projectId);
+
+    if (!isUserHasAccess) {
+      socket.emit(
+        'project-no-access',
+        'You do not have access to this project or this project does not exist',
+      );
+      return;
+    }
     const user = await getUserById(userId);
 
     if (user === null) {
@@ -80,7 +94,7 @@ export const onSocketConnection: (socket: Socket) => void = async (socket) => {
     const project = await getProjectById(projectId);
 
     socket.to(projectId).emit('project-online-members-updated', tempProject.usersOnline);
-    socket.emit('receive-project-code-updated', project?.name, getTempProjectCode(projectId) ?? '');
+    socket.emit('receive-project-loaded', project?.name, getTempProjectCode(projectId) ?? '');
 
     socket.emit('project-online-members-updated', tempProject.usersOnline);
   });
